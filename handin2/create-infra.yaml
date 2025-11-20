@@ -88,6 +88,8 @@
           runcmd:
             - cd /home/ubuntu/assignment1
             - . .venv/bin/activate  
+            - nohup python3 app/main.py > /home/ubuntu/app.log 2>&1 &
+      loop: "{{ vm_names }}"
       loop_control:
         loop_var: vm
 
