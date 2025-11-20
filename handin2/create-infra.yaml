@@ -86,9 +86,7 @@
         userdata: |
           #cloud-config
           runcmd:
-            - cd /home/ubuntu/assignment1
-            - . .venv/bin/activate  
-            - nohup python3 app/main.py > /home/ubuntu/app.log 2>&1 &
+            - nohup /home/ubuntu/assignment1/.venv/bin/python3 /home/ubuntu/assignment1/app/main.py > /home/ubuntu/assignment1/app.log 2>&1 &
       loop: "{{ vm_names }}"
       loop_control:
         loop_var: vm
