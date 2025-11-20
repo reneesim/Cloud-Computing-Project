@@ -86,14 +86,8 @@
         userdata: |
           #cloud-config
           runcmd:
-            - apt-get update
-            - apt-get install -y python3-venv python3-pip
             - cd /home/ubuntu/assignment1
-            - python3 -m venv .venv
-            - . .venv/bin/activate
-            - pip install -r requirements.txt
-            - nohup python3 app/main.py > /home/ubuntu/app.log 2>&1 &
-      loop: "{{ vm_names }}"
+            - . .venv/bin/activate  
       loop_control:
         loop_var: vm
 
