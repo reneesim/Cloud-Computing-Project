@@ -1,0 +1,142 @@
+---
+- name: Cleanup all OpenStack resources for a project
+  hosts: localhost
+  gather_facts: no
+  collections:
+    - openstack.cloud
+
+  vars:
+    cloud_name: xerces
+
+  tasks:
+    - name: Get all servers
+      openstack.cloud.server_info:
+        cloud: "{{ cloud_name }}"
+      register: servers
+
+    - name: Delete all servers
+      openstack.cloud.server:
+        cloud: "{{ cloud_name }}"
+        name: "{{ item.name }}"
+        state: absent
+        wait: yes
+      loop: "{{ servers.servers }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: servers.servers | length > 0
+
+    - name: Get all routers
+      openstack.cloud.routers_info:
+        cloud: "{{ cloud_name }}"
+      register: routers
+
+    - name: Get all ports attached to routers
+      openstack.cloud.port_info:
+        cloud: "{{ cloud_name }}"
+        filters:
+          device_owner: network:router_interface
+      register: router_ports
+
+    - name: Detach all internal interfaces from each router
+      openstack.cloud.router:
+        cloud: "{{ cloud_name }}"
+        name: "{{ item.name }}"
+        state: present
+        interfaces: []        # <— reconcile to none (removes all internal ifaces)
+      loop: "{{ routers.routers }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: routers.routers | length > 0
+
+    # (Optional but helpful) Remove other ports that can block subnet/network deletion
+    - name: Get all non-router ports (dhcp/compute/etc.)
+      openstack.cloud.port_info:
+        cloud: "{{ cloud_name }}"
+      register: all_ports
+
+    - name: Delete non-router ports
+      openstack.cloud.port:
+        cloud: "{{ cloud_name }}"
+        state: absent
+        name: "{{ item.id }}"        # module accepts id in 'name'
+      loop: "{{ all_ports.ports | rejectattr('device_owner', 'equalto', 'network:router_interface') | list }}"
+      loop_control:
+        label: "{{ item.id }} ({{ item.device_owner | default('') }})"
+      when: all_ports.ports | length > 0
+      ignore_errors: true            # some providers auto-delete DHCP ports
+
+    - name: Delete routers
+      openstack.cloud.router:
+        cloud: "{{ cloud_name }}"
+        name: "{{ item.name }}"
+        state: absent
+      loop: "{{ routers.routers }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: routers.routers | length > 0
+
+    - name: Get project subnets only (if my_project_id known)
+      openstack.cloud.subnets_info:
+        cloud: "{{ cloud_name }}"
+        filters:
+          tenant_id: "{{ my_project_id }}"
+        register: subnets
+      when: my_project_id is defined
+
+    - name: Get all networks
+      openstack.cloud.networks_info:
+        cloud: "{{ cloud_name }}"
+      register: networks
+
+    # Optional safeguard: skip external networks (provider/public)
+    - name: Delete all (non-external) networks
+      openstack.cloud.network:
+        cloud: "{{ cloud_name }}"
+        name: "{{ item.name }}"
+        state: absent
+      loop: "{{ networks.networks | rejectattr('is_router_external', 'defined') | list
+                             + networks.networks | selectattr('is_router_external', 'defined') | rejectattr('is_router_external') | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: networks.networks | length > 0
+      ignore_errors: true
+     
+    # Disassociate any attached FIPs by port (no server lookup needed)
+    - name: Disassociate attached floating IPs by port
+      openstack.cloud.floating_ip:
+        cloud: "{{ cloud_name }}"
+        state: absent
+        floating_ip_address: "{{ item.floating_ip_address }}"
+        port: "{{ item.port_id }}"
+        wait: yes
+      loop: "{{ (fips.floating_ips | default([])) | selectattr('port_id', 'defined') | selectattr('port_id') | list }}"
+      loop_control:
+        label: "{{ item.floating_ip_address }}"
+      ignore_errors: true
+
+    # Build map network_id -> name (quote the task name due to colon)
+    - name: "Build map: network_id -> name"
+      ansible.builtin.set_fact:
+        net_id_to_name: >-
+          {{
+            dict(
+              (networks.networks | default([])) | map(attribute='id') | list
+              |
+              zip((networks.networks | default([])) | map(attribute='name') | list)
+            )
+          }}
+
+    # Purge (delete) all FIPs, associated or not
+    - name: Purge all floating IPs
+      openstack.cloud.floating_ip:
+        cloud: "{{ cloud_name }}"
+        state: absent
+        floating_ip_address: "{{ item.floating_ip_address }}"
+        purge: true
+        network: "{{ net_id_to_name[item.floating_network_id] | default(omit) }}"
+      loop: "{{ fips.floating_ips | default([]) }}"
+      loop_control:
+        label: "{{ item.floating_ip_address }}"
+      when: (fips is defined) and ((fips.floating_ips | default([])) | length > 0)
+      ignore_errors: true
+      

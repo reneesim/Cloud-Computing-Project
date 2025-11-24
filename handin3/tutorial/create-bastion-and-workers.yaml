@@ -1,0 +1,184 @@
+- name: Manage OpenStack VM and networking
+  hosts: localhost
+  gather_facts: no
+  collections:
+    - openstack.cloud
+
+  vars:
+     cloud_name: xerces
+     external_network: internet
+     private_net_name: k3s-net
+     private_subnet_name: k3s-subnet
+     router_name: k3s-router
+     cidr: 192.168.100.0/24
+     bastion_vm_name: bastion-vm
+     worker_vm_names:
+       - worker-vm-1
+       - worker-vm-2
+     vm_image: Ubuntu-22.04-jammy
+     vm_default_user: ubuntu
+     vm_flavor: c2m1 # c4m16
+     vm_key_name: "{{ lookup('ansible.builtin.env', 'SSH_KEY_PAIR') }}"
+     ssh_private_key_path: "{{ lookup('ansible.builtin.env', 'SSH_KEY_PATH') }}"
+     k3s_secgroup: k3s-firewall 
+     inventory_output_file_ini: "inventory.ini"
+     
+
+  tasks:
+    - name: Print the ssh key used
+      ansible.builtin.debug:
+         msg: Used key-pair {{ vm_key_name }} h
+
+    - name: Manage private network
+      openstack.cloud.network:
+        cloud: "{{ cloud_name }}"
+        name: "{{ private_net_name }}"
+
+    - name: Manage private subnet
+      openstack.cloud.subnet:
+        cloud: "{{ cloud_name }}"
+        name: "{{ private_subnet_name }}"
+        network_name: "{{ private_net_name }}"
+        cidr: "{{ cidr }}"
+        ip_version: 4
+        #dns_nameservers: [8.8.8.8, 1.1.1.1]
+
+    - name: Manage router
+      openstack.cloud.router:
+        cloud: "{{ cloud_name }}"
+        name: "{{ router_name }}"
+        network: "{{ external_network }}"
+        state: present
+      ignore_errors: true
+
+    - name: Attach subnet to router
+      openstack.cloud.router:
+        cloud: "{{ cloud_name }}"
+        name: "{{ router_name }}"
+        interfaces:
+          - "{{ private_subnet_name }}"
+    
+    - name: Manage security group
+      openstack.cloud.security_group:
+        cloud: "{{ cloud_name }}"
+        name: "{{ k3s_secgroup }}"
+        description: "Allow SSH"
+
+    - name: Allow SSH in security group
+      openstack.cloud.security_group_rule:
+        cloud: "{{ cloud_name }}"
+        security_group: "{{ k3s_secgroup }}"
+        protocol: tcp
+        port_range_min: 22
+        port_range_max: 22
+        direction: ingress
+        remote_ip_prefix: 0.0.0.0/0
+        ethertype: IPv4
+
+    - name: Allow k3s in security group
+      openstack.cloud.security_group_rule:
+        cloud: "{{ cloud_name }}"
+        security_group: "{{ k3s_secgroup }}"
+        protocol: tcp
+        port_range_min: 6443
+        port_range_max: 6443
+        direction: ingress
+        remote_ip_prefix: 0.0.0.0/0
+        ethertype: IPv4
+
+    - name: Open port for the application 
+      openstack.cloud.security_group_rule:
+        cloud: "{{ cloud_name }}"
+        security_group: "{{ k3s_secgroup }}"
+        protocol: tcp
+        port_range_min: 80 
+        port_range_max: 80
+        direction: ingress
+        remote_ip_prefix: 0.0.0.0/0
+        ethertype: IPv4
+
+    # Launch Bastion VM
+    - name: Launch bastion VM
+      openstack.cloud.server:
+        cloud: "{{ cloud_name }}"
+        state: present
+        name: "{{ bastion_vm_name }}"
+        image: "{{ vm_image }}"
+        flavor: "{{ vm_flavor }}"
+        key_name: "{{ vm_key_name }}"
+        network: "{{ private_net_name }}"
+        security_groups: ["{{ k3s_secgroup }}"]
+        wait: yes
+        timeout: 300
+      register: bastion_vm
+
+    # Allocate Floating IP for Bastion
+    - name: Allocate floating IP for bastion
+      openstack.cloud.floating_ip:
+        cloud: "{{ cloud_name }}"
+        network: "{{ external_network }}"
+        server: "{{ bastion_vm_name }}"
+        wait: yes
+      register: bastion_fip
+
+    # Launch worker VMs (no public IP)
+    - name: Launch worker VMs
+      openstack.cloud.server:
+        cloud: "{{ cloud_name }}"
+        state: present
+        name: "{{ item }}"
+        image: "{{ vm_image }}"
+        flavor: "{{ vm_flavor }}"
+        key_name: "{{ vm_key_name }}"
+        network: "{{ private_net_name }}"
+        security_groups: ["{{ k3s_secgroup }}"]
+        wait: yes
+        timeout: 300
+        auto_ip: false #allocates public IP 
+      loop: "{{ worker_vm_names }}"
+      register: worker_vms
+
+    - name: Show Floating IP
+      debug:
+        msg: "Floating IP: {{ bastion_fip.floating_ip.floating_ip_address }}"
+
+    - name: Set floating_ip_address fact
+      set_fact:
+        floating_ip_address: "{{ bastion_fip.floating_ip.floating_ip_address }}"
+
+    ##########################
+    # Configure inside the VM #
+    ##########################
+    - name: Wait for SSH to become available
+      ansible.builtin.wait_for:
+        host: "{{ floating_ip_address }}"
+        port: 22
+        delay: 10
+        timeout: 300
+        state: started
+
+    - name: Add new VM to inventory dynamically
+      add_host:
+        name: vm_worker
+        ansible_host: "{{ floating_ip_address }}"
+        ansible_user: "{{ vm_default_user }}"
+        ansible_ssh_private_key_file: "{{ ssh_private_key_path }}"
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+
+   # Save inventory file
+    - name: Generate the inventory file  
+      copy:
+        dest: "{{ inventory_output_file_ini }}"
+        content: |
+          [bastion]
+          {{ bastion_fip.floating_ip.floating_ip_address }} ansible_user={{ vm_default_user }} ansible_ssh_private_key_file={{ ssh_private_key_path }} ansible_ssh_common_args='-o StrictHostKeyChecking=accept-new'
+
+          [workers]
+          {% for vm in worker_vm_names %}
+          {{ vm }} ansible_host={{ vm }} ansible_user={{ vm_default_user }} ansible_ssh_private_key_file={{ ssh_private_key_path }} ansible_ssh_common_args='-o ProxyJump={{ vm_default_user }}@{{ bastion_fip.floating_ip.floating_ip_address }} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
+          {% endfor %}
+      when: bastion_fip is defined and worker_vms is defined
+
+    - name: Pause for 1 minute to ensure SSH daemons started
+      ansible.builtin.pause:
+        minutes: 1
