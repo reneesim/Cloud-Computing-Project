@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: python-app
+  template:
+    metadata:
+      labels:
+        app: python-app
+    spec:
+      imagePullSecrets:
+        - name: gitlab-registry-secret
+      containers:
+        - name: python-app
+          image: gitlab.control.lth.se:5050/regler/frtn90/2025/agroup31/backendserver:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+          volumeMounts:
+            - name: clouds-config
+              mountPath: /etc/openstack
+              readOnly: true
+      volumes:
+        - name: clouds-config
+          secret:
+            secretName: clouds-yaml

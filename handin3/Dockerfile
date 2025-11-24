@@ -10,6 +10,9 @@ RUN python3 -m venv .venv && .venv/bin/pip install flask python-openstackclient
 
 # Copy the application source code into the container.
 # The COPY has the following form COPY [OPTIONS] <src> ... <dest>
+COPY requirements.txt .
+RUN .venv/bin/pip install -r requirements.txt
+
 COPY ./app/main.py ./app/main.py
 
 # Describe which ports your application is listening on.
