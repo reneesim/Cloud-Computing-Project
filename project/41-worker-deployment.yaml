@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: webapp-mq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+      - name: worker
+        image: python:3.11-slim
+        env:
+        - name: RABBIT_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: config
+              key: RABBIT_HOST
+
+        - name: RABBIT_USER
+          valueFrom:
+            configMapKeyRef:
+              name: config
+              key: RABBIT_USER
+
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: config
+              key: REDIS_HOST
+
+        - name: RABBIT_PASS
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: RABBIT_PASS
+        volumeMounts:
+        - name: worker-code
+          mountPath: /opt/worker
+        command: ["/bin/sh","-c"]
+        args:
+        - |
+          pip install --no-cache-dir pika redis &&           python /opt/worker/worker.py
+      volumes:
+      - name: worker-code
+        configMap:
+          name: worker-code

@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: webapp-mq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: app
+        image: python:3.11-slim
+        env:
+        - name: RABBIT_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: config
+              key: RABBIT_HOST
+
+        - name: RABBIT_USER
+          valueFrom:
+            configMapKeyRef:
+              name: config
+              key: RABBIT_USER
+
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: config
+              key: REDIS_HOST
+
+        - name: RABBIT_PASS
+          valueFrom:
+            secretKeyRef:
+              name: secret
+              key: RABBIT_PASS
+        ports:
+        - containerPort: 5000
+        volumeMounts:
+        - name: app-code
+          mountPath: /opt/app
+        command: ["/bin/sh","-lc"]
+        args:
+        - >
+          ulimit -n 65535 &&
+          pip install --no-cache-dir flask pika redis &&
+          python /opt/app/app.py
+      volumes:
+      - name: app-code
+        configMap:
+          name: app-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+  namespace: webapp-mq
+spec:
+  selector:
+    app: app
+  ports:
+  - name: http
+    port: 5000
+    targetPort: 5000

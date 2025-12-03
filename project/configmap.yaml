@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+  namespace: webapp-mq
+data:
+  RABBITMQ_DEFAULT_USER: appuser
+  RABBIT_HOST: rabbitmq
+  RABBIT_USER: appuser
+  REDIS_HOST: redis
