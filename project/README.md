@@ -7,7 +7,7 @@ info:
   description: API for browsing ticket types and purchasing tickets.
 
 servers:
-  - url: https://129.192.69.172/v1
+  - url: https://129.192.69.172:5000/v1
 
 paths:
   /tickets:
@@ -213,7 +213,7 @@ info:
   description: REST API wrapper for CRUD operations on a Redis key-value store.
 
 servers:
-  - url: https://129.192.69.172/v1
+  - url: https://129.192.69.172:6379/v1
 
 paths:
   /redis:
