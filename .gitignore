@@ -5,3 +5,4 @@ __pycache__/
 .env
 clouds.yaml
 k3s.yaml
+secrets.yaml
