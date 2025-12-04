@@ -1,16 +1,7 @@
-stages: [test]
+stages: [build]
 
-test-build:
-  stage: test
+build-image:
+  stage: build
   image: docker:24-cli
-  services:
-    - name: docker:24-dind
-      alias: docker
-      command: ["--tls=false"]
-  variables:
-    DOCKER_HOST: "tcp://docker:2375"
-    DOCKER_TLS_CERTDIR: ""
   script:
     - docker info
-    - echo "FROM alpine:3.18\nCMD echo hello" > Dockerfile
-    - docker build -t test-image .
