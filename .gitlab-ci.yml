@@ -1,6 +1,6 @@
 stages: [test]
 
-test-docker:
+test-build:
   stage: test
   image: docker:24-cli
   services:
@@ -12,3 +12,5 @@ test-docker:
     DOCKER_TLS_CERTDIR: ""
   script:
     - docker info
+    - echo "FROM alpine:3.18\nCMD echo hello" > Dockerfile
+    - docker build -t test-image .
