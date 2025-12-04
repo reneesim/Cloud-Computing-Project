@@ -1,0 +1,34 @@
+stages: [build]
+
+variables:
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_DRIVER: overlay2
+
+build-image:
+  stage: build
+  image: docker:24-cli
+  services:
+    - name: docker:24-dind
+      command: ["--tls=false", "--mtu=1460"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+  script:
+    - set -eu
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - TAG="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
+
+    # Build with two always-present tags
+    - docker build -f project/Dockerfile --pull -t "$CI_REGISTRY_IMAGE:$TAG" -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG" .
+
+    # Push them
+    - docker push "$CI_REGISTRY_IMAGE:$TAG"
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
+
+    # Add/push :latest only on the default branch
+    - |
+      if [ "${CI_COMMIT_BRANCH:-}" = "${CI_DEFAULT_BRANCH:-}" ]; then
+        docker tag "$CI_REGISTRY_IMAGE:$TAG" "$CI_REGISTRY_IMAGE:latest"
+        docker push "$CI_REGISTRY_IMAGE:latest"
+      fi
