@@ -171,22 +171,28 @@ def create_order():
         "items": detailed_items,
         "grandTotal": grand_total,
         "currency": "EUR",
-        "status": "confirmed",
-        "createdAt": now
+        "status": "pending",
+        "createdAt": now,
+        "message": "Order pending confirmation"
     }
 
     # Store in Redis as JSON
     r.set(f"order:{order_id}", json.dumps(order))
 
+    r.xadd("orders-stream", {"order_id": order_id})
+
+
+    '''
     response = {
-        "orderId": order_id,
+       "orderId": order_id,
         "status": "confirmed",
         "grandTotal": grand_total,
         "currency": "EUR",
         "message": "Order successfully created"
     }
+    '''
 
-    return jsonify(response), 201
+    return jsonify(order), 201
 
 
 # =====================================================================
@@ -203,3 +209,4 @@ def root():
 if __name__ == "__main__":
     print("Starting Redis-backed Ticket Service on 0.0.0.0:5000")
     app.run(host="0.0.0.0", port=5000)
+    #app.run(host="0.0.0.0", port=8000)
