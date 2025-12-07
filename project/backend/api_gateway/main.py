@@ -61,7 +61,8 @@ def bootstrap_tickets():
             "type": "adult",
             "price": "25.00",
             "currency": "EUR",
-            "description": "Standard adult ticket"
+            "description": "Standard adult ticket",
+            "stock": "100"
         })
         add_ticket({
             "id": "t2",
@@ -69,7 +70,8 @@ def bootstrap_tickets():
             "type": "child",
             "price": "12.00",
             "currency": "EUR",
-            "description": "Child ticket ages 3–12"
+            "description": "Child ticket ages 3–12",
+            "stock": "50"
         })
 
 
@@ -208,5 +210,5 @@ def root():
 # =====================================================================
 if __name__ == "__main__":
     print("Starting Redis-backed Ticket Service on 0.0.0.0:5000")
-    app.run(host="0.0.0.0", port=5000)
-    #app.run(host="0.0.0.0", port=8000)
+    #app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=8000)

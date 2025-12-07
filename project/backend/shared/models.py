@@ -21,3 +21,5 @@ class Order(BaseModel):
     currency: str
     status: str
     createdAt: str
+    message: str | None = None
+    failureReason: str | None = None
