@@ -85,8 +85,8 @@ export default function OrderConfirmationPage() {
                 <button
                     onClick={() => navigate("/")}
                     className={`w-full mt-8 py-3 font-semibold rounded-lg shadow transition ${isFailed
-                            ? "bg-red-600 hover:bg-red-700 text-white"
-                            : "bg-blue-600 hover:bg-blue-700 text-white"
+                        ? "bg-red-600 hover:bg-red-700 text-white"
+                        : "bg-blue-600 hover:bg-blue-700 text-white"
                         }`}
                 >
                     Back to Home
