@@ -1,5 +1,5 @@
 variables:
-  REGISTRY_PATH: gitlab.control.lth.se/regler/frtn90/2025/agroup31
+  REGISTRY_PATH: gitlab.control.lth.se:5050/regler/frtn90/2025/agroup31
 
 stages:
   - build
