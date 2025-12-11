@@ -12,18 +12,17 @@ build-frontend:
     - if: '$CI_COMMIT_TAG'
   script:
     - set -eu
-    # Use CI_JOB_TOKEN for GitLab registry login
     - buildah login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
     - TAG="${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}"
     # Build frontend
-    - buildah bud -f ./project/frontend/Dockerfile -t "$REGISTRY_PATH/frontend:$TAG" ./project/frontend
-    - buildah tag "$REGISTRY_PATH/frontend:$TAG" "$REGISTRY_PATH/frontend:$CI_COMMIT_SHORT_SHA"
-    - buildah push "$REGISTRY_PATH/frontend:$TAG"
-    - buildah push "$REGISTRY_PATH/frontend:$CI_COMMIT_SHORT_SHA"
+    - buildah bud -f ./project/frontend/Dockerfile -t "$REGISTRY_PATH/project-frontend:$TAG" ./project/frontend
+    - buildah tag "$REGISTRY_PATH/project-frontend:$TAG" "$REGISTRY_PATH/project-frontend:$CI_COMMIT_SHORT_SHA"
+    - buildah push "$REGISTRY_PATH/project-frontend:$TAG"
+    - buildah push "$REGISTRY_PATH/project-frontend:$CI_COMMIT_SHORT_SHA"
     - |
       if [ "${CI_COMMIT_BRANCH:-}" = "$CI_DEFAULT_BRANCH" ]; then
-        buildah tag "$REGISTRY_PATH/frontend:$TAG" "$REGISTRY_PATH/frontend:latest"
-        buildah push "$REGISTRY_PATH/frontend:latest"
+        buildah tag "$REGISTRY_PATH/project-frontend:$TAG" "$REGISTRY_PATH/project-frontend:latest"
+        buildah push "$REGISTRY_PATH/project-frontend:latest"
       fi
 
 build-backend-api-gateway:
@@ -37,14 +36,14 @@ build-backend-api-gateway:
     - buildah login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
     - TAG="${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}"
     # Build backend api_gateway
-    - buildah bud -f ./project/backend/Dockerfile.api_gateway -t "$REGISTRY_PATH/api_gateway:$TAG" ./project/backend
-    - buildah tag "$REGISTRY_PATH/api_gateway:$TAG" "$REGISTRY_PATH/api_gateway:$CI_COMMIT_SHORT_SHA"
-    - buildah push "$REGISTRY_PATH/api_gateway:$TAG"
-    - buildah push "$REGISTRY_PATH/api_gateway:$CI_COMMIT_SHORT_SHA"
+    - buildah bud -f ./project/backend/Dockerfile.api_gateway -t "$REGISTRY_PATH/project-api-gateway:$TAG" ./project/backend
+    - buildah tag "$REGISTRY_PATH/project-api-gateway:$TAG" "$REGISTRY_PATH/project-api-gateway:$CI_COMMIT_SHORT_SHA"
+    - buildah push "$REGISTRY_PATH/project-api-gateway:$TAG"
+    - buildah push "$REGISTRY_PATH/project-api-gateway:$CI_COMMIT_SHORT_SHA"
     - |
       if [ "${CI_COMMIT_BRANCH:-}" = "$CI_DEFAULT_BRANCH" ]; then
-        buildah tag "$REGISTRY_PATH/api_gateway:$TAG" "$REGISTRY_PATH/api_gateway:latest"
-        buildah push "$REGISTRY_PATH/api_gateway:latest"
+        buildah tag "$REGISTRY_PATH/project-api-gateway:$TAG" "$REGISTRY_PATH/project-api-gateway:latest"
+        buildah push "$REGISTRY_PATH/project-api-gateway:latest"
       fi
 
 build-backend-order-worker:
@@ -58,12 +57,12 @@ build-backend-order-worker:
     - buildah login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
     - TAG="${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}"
     # Build backend order_worker
-    - buildah bud -f ./project/backend/Dockerfile.order_worker -t "$REGISTRY_PATH/order_worker:$TAG" ./project/backend
-    - buildah tag "$REGISTRY_PATH/order_worker:$TAG" "$REGISTRY_PATH/order_worker:$CI_COMMIT_SHORT_SHA"
-    - buildah push "$REGISTRY_PATH/order_worker:$TAG"
-    - buildah push "$REGISTRY_PATH/order_worker:$CI_COMMIT_SHORT_SHA"
+    - buildah bud -f ./project/backend/Dockerfile.order_worker -t "$REGISTRY_PATH/project-order-worker:$TAG" ./project/backend
+    - buildah tag "$REGISTRY_PATH/project-order-worker:$TAG" "$REGISTRY_PATH/project-order-worker:$CI_COMMIT_SHORT_SHA"
+    - buildah push "$REGISTRY_PATH/project-order-worker:$TAG"
+    - buildah push "$REGISTRY_PATH/project-order-worker:$CI_COMMIT_SHORT_SHA"
     - |
       if [ "${CI_COMMIT_BRANCH:-}" = "$CI_DEFAULT_BRANCH" ]; then
-        buildah tag "$REGISTRY_PATH/order_worker:$TAG" "$REGISTRY_PATH/order_worker:latest"
-        buildah push "$REGISTRY_PATH/order_worker:latest"
+        buildah tag "$REGISTRY_PATH/project-order-worker:$TAG" "$REGISTRY_PATH/project-order-worker:latest"
+        buildah push "$REGISTRY_PATH/project-order-worker:latest"
       fi
