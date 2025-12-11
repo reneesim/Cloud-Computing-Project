@@ -1,0 +1,19 @@
+build-app-logic:
+  stage: build
+  image: quay.io/buildah/stable:latest
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+  script:
+    - set -eu
+    - buildah login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - TAG="${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}"
+    - buildah bud -t "$REGISTRY_PATH/app-logic:$TAG" ./project/app-logic
+    - buildah tag "$REGISTRY_PATH/app-logic:$TAG" "$REGISTRY_PATH/app-logic:$CI_COMMIT_SHORT_SHA"
+    - buildah push "$REGISTRY_PATH/app-logic:$TAG"
+    - buildah push "$REGISTRY_PATH/app-logic:$CI_COMMIT_SHORT_SHA"
+    - |
+      if [ "${CI_COMMIT_BRANCH:-}" = "$CI_DEFAULT_BRANCH" ]; then
+        buildah tag "$REGISTRY_PATH/app-logic:$TAG" "$REGISTRY_PATH/app-logic:latest"
+        buildah push "$REGISTRY_PATH/app-logic:latest"
+      fi
