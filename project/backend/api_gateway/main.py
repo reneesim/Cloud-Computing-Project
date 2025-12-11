@@ -2,6 +2,7 @@ import json
 import uuid
 import datetime
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import redis
 import os
 
@@ -14,7 +15,7 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
 app = Flask(__name__)
-
+CORS(app, origins=["http://localhost:5173"]) # to be updated
 
 # =====================================================================
 # Redis Keys Used
