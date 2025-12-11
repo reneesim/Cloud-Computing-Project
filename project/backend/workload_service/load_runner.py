@@ -7,7 +7,7 @@ import httpx
 TARGET_API = os.getenv("TARGET_API", "http://localhost:8000")  # api-gateway URL
 
 _config = {
-    "target_rps": 5,      # default requests per second
+    "target_rps": 100,      # default requests per second
     "mode": "orders",     # could be "orders" or "tickets" later if you want
 }
 
