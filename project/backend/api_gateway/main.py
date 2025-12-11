@@ -15,7 +15,14 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173"]) # to be updated
+CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "http://localhost:5173",
+            "http://129.192.69.172:30080"
+        ]
+    }
+})
 
 # =====================================================================
 # Redis Keys Used

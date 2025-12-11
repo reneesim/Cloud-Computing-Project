@@ -8,3 +8,4 @@ data:
   RABBIT_HOST: rabbitmq
   RABBIT_USER: appuser
   REDIS_HOST: redis
+  REDIS_PORT: "6379"
