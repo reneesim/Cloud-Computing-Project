@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getOrder } from "../api/orders";
 
-
 export default function OrderConfirmationPage() {
     const { id } = useParams();
     const [order, setOrder] = useState<any>(null);
@@ -12,33 +11,66 @@ export default function OrderConfirmationPage() {
         if (id) getOrder(id).then(setOrder);
     }, [id]);
 
-
-    if (!order) return <div>Loading...</div>;
-
+    if (!order) {
+        return (
+            <div className="flex items-center justify-center h-screen text-gray-500">
+                Loading...
+            </div>
+        );
+    }
 
     return (
-        <div className="p-4">
-            <h1 className="text-xl font-bold">Order Confirmation</h1>
-            <p className="mt-2">Order ID: {order.orderId}</p>
-            <p>Status: {order.status}</p>
-            <p>Total: €{order.grandTotal}</p>
+        <div className="flex justify-center p-6">
+            <div className="w-full max-w-lg bg-white rounded-xl shadow-md p-6">
+                {/* Header */}
+                <h1 className="text-3xl font-bold text-gray-900">
+                    Order Confirmed
+                </h1>
+                <p className="text-gray-600 mt-1">
+                    Thank you for your purchase!
+                </p>
 
+                {/* Order Summary */}
+                <div className="mt-6">
+                    <div className="bg-gray-100 rounded-lg p-4">
+                        <p className="text-sm text-gray-700">
+                            <span className="font-semibold">Order ID:</span>{" "}
+                            {order.orderId}
+                        </p>
+                        <p className="text-sm text-gray-700">
+                            <span className="font-semibold">Status:</span>{" "}
+                            {order.status}
+                        </p>
+                        <p className="text-lg font-semibold text-blue-600 mt-2">
+                            Total: €{order.grandTotal}
+                        </p>
+                    </div>
+                </div>
 
-            <h2 className="mt-4 font-semibold">Items:</h2>
-            <ul>
-                {order.items.map((item: any) => (
-                    <li key={item.id}>
-                        {item.name} x {item.quantity} — €{item.total}
-                    </li>
-                ))}
-            </ul>
+                {/* Items */}
+                <h2 className="mt-6 text-xl font-semibold">Items</h2>
+                <ul className="mt-3 space-y-2">
+                    {order.items.map((item: any) => (
+                        <li
+                            key={item.id}
+                            className="flex justify-between bg-gray-50 p-3 rounded-lg border"
+                        >
+                            <span className="font-medium">
+                                {item.name} × {item.quantity}
+                            </span>
+                            <span className="font-semibold">€{item.total}</span>
+                        </li>
+                    ))}
+                </ul>
 
-            <button
-                onClick={() => navigate("/")}
-                className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg"
-            >
-                Back to Home
-            </button>
+                {/* Button */}
+                <button
+                    onClick={() => navigate("/")}
+                    className="w-full mt-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition"
+                >
+                    Back to Home
+                </button>
+            </div>
         </div>
     );
 }
