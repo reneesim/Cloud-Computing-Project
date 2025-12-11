@@ -31,6 +31,13 @@ spec:
             - name: clouds-config
               mountPath: /etc/openstack
               readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
 
       volumes:
         - name: clouds-config

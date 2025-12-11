@@ -18,3 +18,10 @@ spec:
           image: gitlab.control.lth.se:5050/regler/frtn90/2025/agroup31/project-frontend:latest
           ports:
             - containerPort: 80
+          resources:
+            requests:
+              cpu: 100m      # minimum CPU for HPA calculation
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
