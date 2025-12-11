@@ -1,7 +1,10 @@
 variables:
   REGISTRY_PATH: gitlab.control.lth.se/regler/frtn90/2025/agroup31
 
-build-app-logic:
+stages:
+  - build
+
+build-frontend:
   stage: build
   image: quay.io/buildah/stable:latest
   rules:
@@ -11,12 +14,55 @@ build-app-logic:
     - set -eu
     - buildah login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
     - TAG="${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}"
-    - buildah bud -t "$REGISTRY_PATH/app-logic:$TAG" ./project/app-logic
-    - buildah tag "$REGISTRY_PATH/app-logic:$TAG" "$REGISTRY_PATH/app-logic:$CI_COMMIT_SHORT_SHA"
-    - buildah push "$REGISTRY_PATH/app-logic:$TAG"
-    - buildah push "$REGISTRY_PATH/app-logic:$CI_COMMIT_SHORT_SHA"
+    # Build frontend
+    - buildah bud -f ./project/frontend/Dockerfile -t "$REGISTRY_PATH/frontend:$TAG" ./project/frontend
+    - buildah tag "$REGISTRY_PATH/frontend:$TAG" "$REGISTRY_PATH/frontend:$CI_COMMIT_SHORT_SHA"
+    - buildah push "$REGISTRY_PATH/frontend:$TAG"
+    - buildah push "$REGISTRY_PATH/frontend:$CI_COMMIT_SHORT_SHA"
     - |
       if [ "${CI_COMMIT_BRANCH:-}" = "$CI_DEFAULT_BRANCH" ]; then
-        buildah tag "$REGISTRY_PATH/app-logic:$TAG" "$REGISTRY_PATH/app-logic:latest"
-        buildah push "$REGISTRY_PATH/app-logic:latest"
+        buildah tag "$REGISTRY_PATH/frontend:$TAG" "$REGISTRY_PATH/frontend:latest"
+        buildah push "$REGISTRY_PATH/frontend:latest"
+      fi
+
+build-backend-api-gateway:
+  stage: build
+  image: quay.io/buildah/stable:latest
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+  script:
+    - set -eu
+    - buildah login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - TAG="${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}"
+    # Build backend api_gateway
+    - buildah bud -f ./project/backend/Dockerfile.api_gateway -t "$REGISTRY_PATH/api_gateway:$TAG" ./project/backend
+    - buildah tag "$REGISTRY_PATH/api_gateway:$TAG" "$REGISTRY_PATH/api_gateway:$CI_COMMIT_SHORT_SHA"
+    - buildah push "$REGISTRY_PATH/api_gateway:$TAG"
+    - buildah push "$REGISTRY_PATH/api_gateway:$CI_COMMIT_SHORT_SHA"
+    - |
+      if [ "${CI_COMMIT_BRANCH:-}" = "$CI_DEFAULT_BRANCH" ]; then
+        buildah tag "$REGISTRY_PATH/api_gateway:$TAG" "$REGISTRY_PATH/api_gateway:latest"
+        buildah push "$REGISTRY_PATH/api_gateway:latest"
+      fi
+
+build-backend-order-worker:
+  stage: build
+  image: quay.io/buildah/stable:latest
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+  script:
+    - set -eu
+    - buildah login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - TAG="${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}"
+    # Build backend order_worker
+    - buildah bud -f ./project/backend/Dockerfile.order_worker -t "$REGISTRY_PATH/order_worker:$TAG" ./project/backend
+    - buildah tag "$REGISTRY_PATH/order_worker:$TAG" "$REGISTRY_PATH/order_worker:$CI_COMMIT_SHORT_SHA"
+    - buildah push "$REGISTRY_PATH/order_worker:$TAG"
+    - buildah push "$REGISTRY_PATH/order_worker:$CI_COMMIT_SHORT_SHA"
+    - |
+      if [ "${CI_COMMIT_BRANCH:-}" = "$CI_DEFAULT_BRANCH" ]; then
+        buildah tag "$REGISTRY_PATH/order_worker:$TAG" "$REGISTRY_PATH/order_worker:latest"
+        buildah push "$REGISTRY_PATH/order_worker:latest"
       fi
