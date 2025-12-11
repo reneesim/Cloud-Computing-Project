@@ -4,7 +4,7 @@ metadata:
   name: frontend
   namespace: webapp-mq
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: frontend
@@ -20,7 +20,7 @@ spec:
             - containerPort: 80
           resources:
             requests:
-              cpu: 100m      # minimum CPU for HPA calculation
+              cpu: 100m
               memory: 128Mi
             limits:
               cpu: 500m

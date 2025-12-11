@@ -4,7 +4,7 @@ metadata:
   name: python-app
   namespace: webapp-mq
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: python-app
@@ -15,18 +15,15 @@ spec:
     spec:
       imagePullSecrets:
         - name: gitlab-registry-secret
-
       containers:
         - name: python-app
           image: gitlab.control.lth.se:5050/regler/frtn90/2025/agroup31/project-api-gateway:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
-
           envFrom:
             - configMapRef:
                 name: config
-
           volumeMounts:
             - name: clouds-config
               mountPath: /etc/openstack
@@ -38,7 +35,6 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-
       volumes:
         - name: clouds-config
           secret:
