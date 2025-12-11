@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  api-gateway:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.api_gateway
+    container_name: api-gateway
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+  order-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.order_worker
+    container_name: order-worker
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    ports:
+      - "8001:8001"
+    depends_on:
+      - redis
+
+  workload-service:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.workload_service
+    container_name: workload-service
+    environment:
+      TARGET_API: "http://api-gateway:8000"
+      TARGET_RPS: 5
+    ports:
+      - "9000:9000"
+    depends_on:
+      - api-gateway
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - api-gateway
