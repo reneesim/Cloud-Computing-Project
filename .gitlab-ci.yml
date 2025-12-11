@@ -1,3 +1,6 @@
+variables:
+  REGISTRY_PATH: gitlab.control.lth.se/regler/frtn90/2025/agroup31
+
 build-app-logic:
   stage: build
   image: quay.io/buildah/stable:latest
