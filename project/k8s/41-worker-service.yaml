@@ -6,8 +6,9 @@ metadata:
 spec:
   selector:
     app: order-worker
+  type: NodePort
   ports:
     - name: http
       port: 8001
-      targetPort: 30081
-  type: ClusterIP
+      targetPort: 8001
+      nodePort: 30060
