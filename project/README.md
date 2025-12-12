@@ -53,7 +53,7 @@ The Workload Generator can run externally or inside the cluster.
 
 ## 3. Microservices Breakdown
 
-### **1. API Gateway (Flask)**
+### **API Gateway (Flask)**
 The **public-facing REST API** that exposes:
 
 - `GET /tickets`  
@@ -70,7 +70,7 @@ Responsibilities:
 
 ---
 
-### **2. Order Worker (FastAPI)**
+### **Order Worker (FastAPI)**
 Asynchronous background processor that consumes events from the Redis Stream.
 
 Responsibilities:
@@ -87,7 +87,7 @@ This microservice demonstrates:
 
 ---
 
-### **3. Workload Generator (FastAPI + Async HTTP client)**
+### **Workload Generator (FastAPI + Async HTTP client)**
 Generates controlled load to simulate real-world traffic.
 
 Capabilities:
