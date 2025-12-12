@@ -221,7 +221,9 @@ Kubernetes will automatically recreate it.
 
 ---
 
-## 5. Ticket Purchase API
+## 5. OpenAPI
+
+### Ticket Purchase API
 ```
 openapi: 3.1.0
 info:
@@ -427,7 +429,7 @@ components:
 ```
 
 
-## 6. Database API
+### Database API
 ```
 openapi: 3.1.0
 info:
