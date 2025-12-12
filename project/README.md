@@ -106,7 +106,7 @@ Reasons for separating this service:
 
 ---
 
-## 3. Cloud-Native & 12-Factor Principles
+## 4. Cloud-Native & 12-Factor Principles
 
 This project adheres to key **12-Factor App** guidelines:
 
@@ -156,7 +156,7 @@ This project adheres to key **12-Factor App** guidelines:
 
 ---
 
-## 4. Useful Commands
+## 5. Useful Commands
 
 ### Kubernetes Inspection
 
@@ -221,7 +221,7 @@ Kubernetes will automatically recreate it.
 
 ---
 
-## 5. OpenAPI
+## 6. OpenAPI
 
 ### Ticket Purchase API
 ```
