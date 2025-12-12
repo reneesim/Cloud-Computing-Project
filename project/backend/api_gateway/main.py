@@ -62,7 +62,8 @@ def add_ticket(ticket):
 # ---------------------------------------------------------------------
 def bootstrap_tickets():
     if r.llen("tickets") == 0:
-        print("Bootstrapping 2 demo tickets...")
+        print("Bootstrapping demo tickets...")
+        
         add_ticket({
             "id": "t1",
             "name": "Concert",
@@ -81,6 +82,77 @@ def bootstrap_tickets():
             "description": "Child ticket ages 3–12",
             "stock": "50"
         })
+
+        add_ticket({
+            "id": "t3",
+            "name": "Concert",
+            "type": "vip",
+            "price": "60.00",
+            "currency": "EUR",
+            "description": "VIP ticket with front-row seating",
+            "stock": "20"
+        })
+
+        add_ticket({
+            "id": "t4",
+            "name": "Festival Day Pass",
+            "type": "adult",
+            "price": "40.00",
+            "currency": "EUR",
+            "description": "One-day access to the music festival",
+            "stock": "200"
+        })
+
+        add_ticket({
+            "id": "t5",
+            "name": "Festival Weekend Pass",
+            "type": "adult",
+            "price": "90.00",
+            "currency": "EUR",
+            "description": "Full weekend access to all stages and events",
+            "stock": "120"
+        })
+
+        add_ticket({
+            "id": "t6",
+            "name": "Theatre Show",
+            "type": "balcony",
+            "price": "30.00",
+            "currency": "EUR",
+            "description": "Balcony seat for evening theatre performance",
+            "stock": "80"
+        })
+
+        add_ticket({
+            "id": "t7",
+            "name": "Theatre Show",
+            "type": "front-row",
+            "price": "55.00",
+            "currency": "EUR",
+            "description": "Front-row premium theatre seat",
+            "stock": "40"
+        })
+
+        add_ticket({
+            "id": "t8",
+            "name": "Movie Night",
+            "type": "standard",
+            "price": "10.00",
+            "currency": "EUR",
+            "description": "Standard cinema entry ticket",
+            "stock": "150"
+        })
+
+        add_ticket({
+            "id": "t9",
+            "name": "Movie Night",
+            "type": "student",
+            "price": "7.50",
+            "currency": "EUR",
+            "description": "Discounted ticket for students (ID required)",
+            "stock": "70"
+        })
+
 
 
 bootstrap_tickets()
