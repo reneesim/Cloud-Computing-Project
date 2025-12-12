@@ -154,6 +154,8 @@ This project adheres to key **12-Factor App** guidelines:
 ### **Admin Processes**
 - Admin/debug tasks can be executed via ephemeral Kubernetes pods
 
+---
+
 ## 4. Useful Commands
 
 ### Kubernetes Inspection
@@ -217,7 +219,9 @@ kubectl delete pod frontend-<POD_ID> -n webapp-mq
 ```
 Kubernetes will automatically recreate it.
 
-Ticket Purchase API
+---
+
+## 5. Ticket Purchase API
 ```
 openapi: 3.1.0
 info:
@@ -423,7 +427,7 @@ components:
 ```
 
 
-Database API
+## 6. Database API
 ```
 openapi: 3.1.0
 info:
