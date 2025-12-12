@@ -1,3 +1,222 @@
+# Cloud-Native Ticketing System
+
+This project implements a **distributed, cloud-native ticketing system** built using a microservices architecture and deployed with Docker containers and Kubernetes. It demonstrates modern application design patterns including asynchronous processing, event-driven workflow, Horizontal Pod Autoscaling (HPA), and workload simulation under realistic traffic.
+
+---
+
+## 1. Application Overview
+
+The system provides a complete flow for browsing and purchasing tickets while showcasing Kubernetes autoscaling and microservice communication.
+
+Users can:
+- View available tickets  
+- Create ticket orders  
+- Have orders processed asynchronously  
+- Generate artificial workload to trigger autoscaling  
+- Access the entire system via a simple web frontend  
+
+This application demonstrates:
+- Microservices communication patterns  
+- Asynchronous processing using **Redis Streams**  
+- Horizontal Pod Autoscaling (HPA)  
+- Containerized deployment using Docker  
+- Kubernetes-based orchestration  
+
+---
+
+## 2. Architecture & Microservices Design
+
+### Architecture Diagram
+<img src="./cloud_computing_final.png" alt="Architecture Diagram" width="800"/>
+
+### High-Level Architecture
+
+The system is composed of:
+
+- **Frontend (React + Nginx)**  
+- **API Gateway (Flask)**  
+- **Order Worker (FastAPI)**  
+- **Workload Generator (FastAPI)**  
+- **Redis**  
+  - Datastore  
+  - Message/Event Stream (Redis Streams)
+
+Redis is used for:
+- Ticket and order storage  
+- Asynchronous messaging  
+- Stream-based event processing  
+
+Each microservice runs as its own Kubernetes Deployment and communicates internally using Kubernetes DNS.  
+The Workload Generator can run externally or inside the cluster.
+
+---
+
+## 3. Microservices Breakdown
+
+### **1. API Gateway (Flask)**
+The **public-facing REST API** that exposes:
+
+- `GET /tickets`  
+- `POST /orders`  
+- `GET /orders/{orderId}`  
+
+Responsibilities:
+- Initializes ticket stock on startup  
+- Writes ticket/order data to Redis  
+- Publishes new orders into a **Redis Stream**  
+- Acts as a **single entry point** (API Gateway Pattern)  
+- Keeps the frontend decoupled from backend processing  
+- Scales independently via Kubernetes HPA  
+
+---
+
+### **2. Order Worker (FastAPI)**
+Asynchronous background processor that consumes events from the Redis Stream.
+
+Responsibilities:
+- Reads new order events from Redis Stream  
+- Validates and decrements ticket stock  
+- Confirms or rejects orders  
+- Updates Redis with the final order status  
+- Performs updates atomically  
+
+This microservice demonstrates:
+- Event-driven architecture  
+- Decoupling of order submission vs order fulfillment  
+- High-performance async processing  
+
+---
+
+### **3. Workload Generator (FastAPI + Async HTTP client)**
+Generates controlled load to simulate real-world traffic.
+
+Capabilities:
+- Configurable **Requests-Per-Second (RPS)** load  
+- Sends repeated `POST /orders` to API Gateway  
+- Exposes endpoints to:
+  - Start workload  
+  - Stop workload  
+  - Get workload configuration  
+  - Report runtime statistics (latency, success, failure)  
+
+Reasons for separating this service:
+- Load generation remains independent from cluster internals  
+- Clean demonstrations of autoscaling behavior  
+- Traffic patterns are controlled and reproducible  
+
+---
+
+## 3. Cloud-Native & 12-Factor Principles
+
+This project adheres to key **12-Factor App** guidelines:
+
+### **Codebase**
+- Single Git repository containing all services
+
+### **Dependencies**
+- Explicit dependency definitions (`requirements.txt`) for each microservice
+
+### **Config**
+- All configuration stored in environment variables  
+  - e.g. Redis host, target API URL, internal service ports
+
+### **Backing Services**
+- Redis treated as an attached service  
+- Services remain stateless (data persists only in Redis)
+
+### **Build, Release, Run**
+- Each service built as a Docker image  
+- Kubernetes handles deployment, scaling, and rollouts  
+
+### **Processes**
+- All microservices run as **stateless processes**  
+- Redis provides durable state
+
+### **Port Binding**
+- Each service binds to its own internal port  
+- Exposed via Kubernetes Services  
+
+### **Concurrency**
+- Horizontal scaling via Kubernetes HPA  
+- API Gateway and Worker scale independently  
+
+### **Disposability**
+- Pods can be safely restarted without data loss  
+- Fast startup/shutdown for efficient scaling  
+
+### **Dev/Prod Parity**
+- Same container images used locally and in the cluster  
+
+### **Logs**
+- Services output structured logs to stdout/stderr  
+- Kubernetes handles log aggregation  
+
+### **Admin Processes**
+- Admin/debug tasks can be executed via ephemeral Kubernetes pods
+
+## 4. Useful Commands
+
+### Kubernetes Inspection
+
+```bash
+kubectl get pods -n webapp-mq -o wide
+kubectl get svc -n webapp-mq
+kubectl get secrets -n webapp-mq
+```
+
+### CI/CD & Deployments
+
+Gitlab CI/CD is setup for the main branch, and will automatically build the backend app, worker and frontend when a new commit is pushed to main. The following command restarts the deployment to apply the new changes.
+```bash
+kubectl rollout restart deployment frontend -n webapp-mq
+```
+
+If Gitlab is stuck, change the image tag and re-apply in project/k8s folder (mainly for demonstration purposes)
+```bash
+kubectl apply -f ./50-frontend-deployment.yaml
+```
+
+### Workload Generator (Autoscaling Demo)
+
+Run workload generator locally (Need to build Dockerfile.workload_service first):
+```bash
+docker run --rm -it \
+    -p 9000:9000 \
+    -e TARGET_API=http://129.192.69.172:30050 \
+    -e TARGET_RPS=5 \
+    project-workload-service
+```
+
+Start load
+```bash
+curl -X POST http://localhost:9000/start
+```
+
+Monitor autoscaling (in separate terminals)
+```bash
+watch -n 2 kubectl get pods -n webapp-mq
+```
+
+```bash
+watch kubectl get hpa -n webapp-mq
+```
+
+### Teardown & Redeploy
+```bash
+# Delete everything in the namespace
+kubectl delete all --all -n webapp-mq
+
+# Apply all manifests
+kubectl apply -f k8s/
+```
+
+### Resilience testing 
+Force delete a pod
+```bash
+kubectl delete pod frontend-<POD_ID> -n webapp-mq
+```
+Kubernetes will automatically recreate it.
+
 Ticket Purchase API
 ```
 openapi: 3.1.0
