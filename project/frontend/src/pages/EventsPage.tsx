@@ -12,7 +12,7 @@ export default function EventsPage() {
     return (
         <div className="p-6 max-w-4xl mx-auto">
             <h1 className="text-3xl font-bold mb-8 text-gray-900">
-                Available Tickets
+                Available Tickets (CHANGED)
             </h1>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
