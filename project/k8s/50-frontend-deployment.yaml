@@ -15,7 +15,9 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: gitlab.control.lth.se:5050/regler/frtn90/2025/agroup31/project-frontend:latest
+          # image: gitlab.control.lth.se:5050/regler/frtn90/2025/agroup31/project-frontend:latest
+          image: gitlab.control.lth.se:5050/regler/frtn90/2025/agroup31/project-frontend:v1
+          # image: gitlab.control.lth.se:5050/regler/frtn90/2025/agroup31/project-frontend:v2
           ports:
             - containerPort: 80
           resources:
