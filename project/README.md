@@ -156,8 +156,52 @@ This project adheres to key **12-Factor App** guidelines:
 
 ---
 
-## 5. Useful Commands
+## 5. Setup Commands
 
+### Local Setup (Docker)
+
+For local development and testing, the entire system can be run using Docker Compose. 
+This setup runs all microservices on a single machine and does not require a Kubernetes cluster. 
+
+To start all services, run:
+```bash
+docker compose up --build
+```
+
+The following enpoints will then be available: 
+- Frontend: http://localhost:5173
+- API Gateway: http://localhost:8000
+- Workload Service: http://localhost:9000
+
+To stop and remove all running containers:
+```bash
+docker compose down
+```
+
+### Kubernetes Deployment
+
+The production deployment runs on a Kubernetes cluser (k3s). 
+Each microservice is deployed as a separate Kubernetes Deployment.
+The workload generator runs externally and is used to generate load against the cluster for autoscaling demonstrations.
+
+To enable access to the Kubernetes cluster, set the kubeconfig file:
+```bash
+export KUBECONFIG=./k3s.yaml
+```
+
+Verify cluster connectivity: 
+```bash
+kubectl get nodes
+```
+
+Deploy all Kubernetes resources:
+```bash
+kubectl apply -f k8s/
+```
+
+---
+
+## 6. Useful Commands
 ### Kubernetes Inspection
 
 ```bash
@@ -221,7 +265,7 @@ Kubernetes will automatically recreate it.
 
 ---
 
-## 6. OpenAPI
+## 7. OpenAPI
 
 ### Ticket Purchase API
 ```
