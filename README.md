@@ -1,93 +1,650 @@
-# agroup31
+# Cloud-Native Ticketing System
 
+This project implements a **distributed, cloud-native ticketing system** built using a microservices architecture and deployed with Docker containers and Kubernetes. It demonstrates modern application design patterns including asynchronous processing, event-driven workflow, Horizontal Pod Autoscaling (HPA), and workload simulation under realistic traffic.
 
+---
 
-## Getting started
+## 1. Application Overview
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+The system provides a complete flow for browsing and purchasing tickets while showcasing Kubernetes autoscaling and microservice communication.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+Users can:
+- View available tickets  
+- Create ticket orders  
+- Have orders processed asynchronously  
+- Generate artificial workload to trigger autoscaling  
+- Access the entire system via a simple web frontend  
 
-## Add your files
+This application demonstrates:
+- Microservices communication patterns  
+- Asynchronous processing using **Redis Streams**  
+- Horizontal Pod Autoscaling (HPA)  
+- Containerized deployment using Docker  
+- Kubernetes-based orchestration  
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+---
+
+## 2. Architecture & Microservices Design
+
+### Architecture Diagram
+<img src="./cloud_computing_final.png" alt="Architecture Diagram" width="800"/>
+
+### High-Level Architecture
+
+The system is composed of:
+
+- **Frontend (React + Nginx)**  
+- **API Gateway (Flask)**  
+- **Order Worker (FastAPI)**  
+- **Workload Generator (FastAPI)**  
+- **Redis**  
+  - Datastore  
+  - Message/Event Stream (Redis Streams)
+
+Redis is used for:
+- Ticket and order storage  
+- Asynchronous messaging  
+- Stream-based event processing  
+
+Each microservice runs as its own Kubernetes Deployment and communicates internally using Kubernetes DNS.  
+The Workload Generator can run externally or inside the cluster.
+
+---
+
+## 3. Microservices Breakdown
+
+### **API Gateway (Flask)**
+The **public-facing REST API** that exposes:
+
+- `GET /tickets`  
+- `POST /orders`  
+- `GET /orders/{orderId}`  
+
+Responsibilities:
+- Initializes ticket stock on startup  
+- Writes ticket/order data to Redis  
+- Publishes new orders into a **Redis Stream**  
+- Acts as a **single entry point** (API Gateway Pattern)  
+- Keeps the frontend decoupled from backend processing  
+- Scales independently via Kubernetes HPA  
+
+---
+
+### **Order Worker (FastAPI)**
+Asynchronous background processor that consumes events from the Redis Stream.
+
+Responsibilities:
+- Reads new order events from Redis Stream  
+- Validates and decrements ticket stock  
+- Confirms or rejects orders  
+- Updates Redis with the final order status  
+- Performs updates atomically  
+
+This microservice demonstrates:
+- Event-driven architecture  
+- Decoupling of order submission vs order fulfillment  
+- High-performance async processing  
+
+---
+
+### **Workload Generator (FastAPI + Async HTTP client)**
+Generates controlled load to simulate real-world traffic.
+
+Capabilities:
+- Configurable **Requests-Per-Second (RPS)** load  
+- Sends repeated `POST /orders` to API Gateway  
+- Exposes endpoints to:
+  - Start workload  
+  - Stop workload  
+  - Get workload configuration  
+  - Report runtime statistics (latency, success, failure)  
+
+Reasons for separating this service:
+- Load generation remains independent from cluster internals  
+- Clean demonstrations of autoscaling behavior  
+- Traffic patterns are controlled and reproducible  
+
+---
+
+## 4. Cloud-Native & 12-Factor Principles
+
+This project adheres to key **12-Factor App** guidelines:
+
+### **Codebase**
+- Single Git repository containing all services
+
+### **Dependencies**
+- Explicit dependency definitions (`requirements.txt`) for each microservice
+
+### **Config**
+- All configuration stored in environment variables  
+  - e.g. Redis host, target API URL, internal service ports
+
+### **Backing Services**
+- Redis treated as an attached service  
+- Services remain stateless (data persists only in Redis)
+
+### **Build, Release, Run**
+- Each service built as a Docker image  
+- Kubernetes handles deployment, scaling, and rollouts  
+
+### **Processes**
+- All microservices run as **stateless processes**  
+- Redis provides durable state
+
+### **Port Binding**
+- Each service binds to its own internal port  
+- Exposed via Kubernetes Services  
+
+### **Concurrency**
+- Horizontal scaling via Kubernetes HPA  
+- API Gateway and Worker scale independently  
+
+### **Disposability**
+- Pods can be safely restarted without data loss  
+- Fast startup/shutdown for efficient scaling  
+
+### **Dev/Prod Parity**
+- Same container images used locally and in the cluster  
+
+### **Logs**
+- Services output structured logs to stdout/stderr  
+- Kubernetes handles log aggregation  
+
+### **Admin Processes**
+- Admin/debug tasks can be executed via ephemeral Kubernetes pods
+
+---
+
+## 5. Setup Commands
+
+### Local Setup (Docker)
+
+For local development and testing, the entire system can be run using Docker Compose. 
+This setup runs all microservices on a single machine and does not require a Kubernetes cluster. 
+
+To start all services, run:
+```bash
+docker compose up --build
+```
+
+The following enpoints will then be available: 
+- Frontend: http://localhost:5173
+- API Gateway: http://localhost:8000
+- Workload Service: http://localhost:9000
+
+To stop and remove all running containers:
+```bash
+docker compose down
+```
+
+### Kubernetes Deployment
+
+The production deployment runs on a Kubernetes cluser (k3s). 
+Each microservice is deployed as a separate Kubernetes Deployment.
+The workload generator runs externally and is used to generate load against the cluster for autoscaling demonstrations.
+
+To enable access to the Kubernetes cluster, set the kubeconfig file:
+```bash
+export KUBECONFIG=./k3s.yaml
+```
+
+Verify cluster connectivity: 
+```bash
+kubectl get nodes
+```
+
+Deploy all Kubernetes resources:
+```bash
+kubectl apply -f k8s/
+```
+
+---
+
+## 6. Useful Commands
+### Kubernetes Inspection
+
+```bash
+kubectl get pods -n webapp-mq -o wide
+kubectl get svc -n webapp-mq
+kubectl get secrets -n webapp-mq
+```
+
+### CI/CD & Deployments
+
+Gitlab CI/CD is setup for the main branch, and will automatically build the backend app, worker and frontend when a new commit is pushed to main. The following command restarts the deployment to apply the new changes.
+```bash
+kubectl rollout restart deployment frontend -n webapp-mq
+```
+
+If Gitlab is stuck, change the image tag and re-apply in project/k8s folder (mainly for demonstration purposes)
+```bash
+kubectl apply -f ./50-frontend-deployment.yaml
+```
+
+### Workload Generator (Autoscaling Demo)
+
+Run workload generator locally (Need to build Dockerfile.workload_service first):
+```bash
+docker run --rm -it \
+    -p 9000:9000 \
+    -e TARGET_API=http://129.192.69.172:30050 \
+    -e TARGET_RPS=5 \
+    project-workload-service
+```
+
+Start load
+```bash
+curl -X POST http://localhost:9000/start
+```
+
+Monitor autoscaling (in separate terminals)
+```bash
+watch -n 2 kubectl get pods -n webapp-mq
+```
+
+```bash
+watch kubectl get hpa -n webapp-mq
+```
+
+### Teardown & Redeploy
+```bash
+# Delete everything in the namespace
+kubectl delete all --all -n webapp-mq
+
+# Apply all manifests
+kubectl apply -f k8s/
+```
+
+### Resilience testing 
+Force delete a pod
+```bash
+kubectl delete pod frontend-<POD_ID> -n webapp-mq
+```
+Kubernetes will automatically recreate it.
+
+---
+
+## 7. OpenAPI
+
+### Ticket Purchase API
+```
+openapi: 3.1.0
+info:
+  title: Ticket Purchase API
+  version: 1.0.0
+  description: API for browsing ticket types and purchasing tickets.
+
+servers:
+  - url: https://129.192.69.172:5000/v1
+
+paths:
+  /tickets:
+    get:
+      summary: Get available ticket types
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+          description: Filter by ticket type
+        - in: query
+          name: min_price
+          schema:
+            type: number
+          description: Minimum price filter
+        - in: query
+          name: max_price
+          schema:
+            type: number
+          description: Maximum price filter
+      responses:
+        "200":
+          description: List of available tickets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tickets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Ticket"
+
+  /orders/{orderId}:
+    get:
+      summary: Get order details by ID
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /orders:
+    post:
+      summary: Create a new ticket order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Order successfully created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateOrderResponse"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          example: "adult"
+        price:
+          type: number
+          example: 25.00
+        currency:
+          type: string
+          example: "USD"
+        description:
+          type: string
+
+    OrderItem:
+      type: object
+      properties:
+        ticketId:
+          type: string
+        type:
+          type: string
+        qty:
+          type: integer
+        unitPrice:
+          type: number
+        total:
+          type: number
+
+    Order:
+      type: object
+      properties:
+        orderId:
+          type: string
+        customer:
+          type: object
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        grandTotal:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+          example: "confirmed"
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateOrderRequest:
+      type: object
+      required:
+        - customer
+        - items
+        - paymentMethod
+      properties:
+        customer:
+          type: object
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+        items:
+          type: array
+          items:
+            type: object
+            required:
+              - ticketId
+              - qty
+            properties:
+              ticketId:
+                type: string
+              qty:
+                type: integer
+        paymentMethod:
+          type: string
+          example: "credit_card"
+
+    CreateOrderResponse:
+      type: object
+      properties:
+        orderId:
+          type: string
+        status:
+          type: string
+        grandTotal:
+          type: number
+        currency:
+          type: string
+        message:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.control.lth.se/regler/frtn90/2025/agroup31.git
-git branch -M main
-git push -uf origin main
+
+
+### Database API
 ```
+openapi: 3.1.0
+info:
+  title: Redis CRUD API
+  version: 1.0.0
+  description: REST API wrapper for CRUD operations on a Redis key-value store.
 
-## Integrate with your tools
+servers:
+  - url: https://129.192.69.172:6379/v1
 
-- [ ] [Set up project integrations](https://gitlab.control.lth.se/regler/frtn90/2025/agroup31/-/settings/integrations)
+paths:
+  /redis:
+    post:
+      summary: Create a new Redis key-value entry
+      description: Creates a new key with a JSON value in Redis.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRedisEntry"
+      responses:
+        "201":
+          description: Successfully created key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+        "400":
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
-## Collaborate with your team
+  /redis/{key}:
+    get:
+      summary: Read a Redis key-value entry
+      description: Retrieves a value stored at the given key.
+      parameters:
+        - in: path
+          name: key
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: Redis key value fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedisEntry"
+        "404":
+          description: Key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+    put:
+      summary: Update an existing Redis key
+      description: Replaces the value at an existing Redis key.
+      parameters:
+        - in: path
+          name: key
+          schema:
+            type: string
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRedisEntry"
+      responses:
+        "200":
+          description: Key updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+        "404":
+          description: Key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
-## Test and Deploy
+    delete:
+      summary: Delete a Redis key
+      description: Removes a key from Redis.
+      parameters:
+        - in: path
+          name: key
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: Key deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessMessage"
+        "404":
+          description: Key not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
-Use the built-in continuous integration in GitLab.
+components:
+  schemas:
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+    CreateRedisEntry:
+      type: object
+      required:
+        - key
+        - value
+      properties:
+        key:
+          type: string
+          example: "user:1001"
+        value:
+          type: object
+          description: JSON object to store at the key
+          example:
+            name: "Alice"
+            age: 25
+            role: "admin"
 
-***
+    UpdateRedisEntry:
+      type: object
+      required:
+        - value
+      properties:
+        value:
+          type: object
+          description: JSON value to overwrite the existing key
+          example:
+            name: "Alice Anderson"
+            age: 26
+            role: "admin"
 
-# Editing this README
+    RedisEntry:
+      type: object
+      properties:
+        key:
+          type: string
+          example: "user:1001"
+        value:
+          type: object
+          example:
+            name: "Alice"
+            age: 25
+            role: "admin"
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+    SuccessMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Operation completed successfully"
+        key:
+          type: string
+          example: "user:1001"
 
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Key not found"
+```
